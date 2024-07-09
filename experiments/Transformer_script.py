@@ -50,6 +50,13 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 	
 
+class LambdaLayer(nn.Module):
+    def __init__(self, lambd):
+        super(LambdaLayer, self).__init__()
+        self.lambd = lambd
+    def forward(self, x):
+        return self.lambd(x)
+
 #1) Nastavit Arguenty
 parser = argparse.ArgumentParser()
 parser.add_argument("--epochs", type=int, default=300, help="number of epochs")  #epoch=kolikart projedu cely dataset tim modelem, iterace*batch size=cely dataset, tj kolik iteraci v zavilosti na batch size je potreba udelat aby probehla jedna epoch?
@@ -80,6 +87,7 @@ y_1 = nn.TransformerEncoderLayer(128, 4, 256, activation=get_activation(options.
 y_2 = nn.TransformerEncoderLayer(128, 4, 256, activation=get_activation(options.activation), batch_first=True)
 y_3 = nn.TransformerEncoderLayer(128, 4, 256, activation=get_activation(options.activation), batch_first=True)
 x_2 = nn.Linear(128, 4)
+
 f = nn.Sequential(
 	LambdaLayer(lambda x: x.permute((0,2,1))),
 	x_1,
@@ -154,7 +162,7 @@ test_discharges=load_unseen_test_data()
 
 results = []
 for key in test_discharges:
-	y_hat, y = acc_tst(trener.model, test_discharges, key)
+	y_hat, y = acc_tst(trener.model, test_discharges, key, "cuda")
 	if len(np.unique(y)) !=1:
 		my_table = wandb.Table(columns=["labels", "predictions"], data=np.vstack([y, y_hat]).transpose())
 		run.log({f"Predictions - {key}": my_table})
