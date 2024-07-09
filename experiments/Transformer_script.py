@@ -63,6 +63,7 @@ parser.add_argument("--epochs", type=int, default=300, help="number of epochs") 
 parser.add_argument("--batch_size", type=int, default=128, help="size of each image batch")
 parser.add_argument("--activation", type=str, default="relu", help="activation function")
 parser.add_argument("--lr", type=float, default=3e-3, help="learning rate")
+parser.add_argument("--heads", type=int, default=4, help="number of heads")
 parser.add_argument("--scheduler", type=str, default="None", help="scheduler params \"milestone-gamma\" or \"milestone1-milestone2-gamma\" ")
 parser.add_argument("--sup_samples", type=float, default=1.0, help="ratio of labeled date")
 parser.add_argument("--balanced", type=str, default="True", help="balanced classes within supervised samples")
@@ -83,9 +84,9 @@ print(f"xdim: {xdim}") # 5, 160
 #4) model
 x_1 = nn.Linear(5,128)
 pe=PositionalEncoding(128, 0.0, 160)
-y_1 = nn.TransformerEncoderLayer(128, 4, 256, activation=get_activation(options.activation), batch_first=True)
-y_2 = nn.TransformerEncoderLayer(128, 4, 256, activation=get_activation(options.activation), batch_first=True)
-y_3 = nn.TransformerEncoderLayer(128, 4, 256, activation=get_activation(options.activation), batch_first=True)
+y_1 = nn.TransformerEncoderLayer(128, options.heads, 256, activation=get_activation(options.activation), batch_first=True)
+y_2 = nn.TransformerEncoderLayer(128, options.heads, 256, activation=get_activation(options.activation), batch_first=True)
+y_3 = nn.TransformerEncoderLayer(128, options.heads, 256, activation=get_activation(options.activation), batch_first=True)
 x_2 = nn.Linear(128, 4)
 
 f = nn.Sequential(
