@@ -18,6 +18,37 @@ import utils.datasets as d
 import wandb
 import datetime
 import sklearn
+import math
+
+class LambdaLayer(nn.Module):
+	def __init__(self,lambd):
+		super(LambdaLayer,self).__init__()
+		self.lambd=lambd
+	def forward(self,x):
+		return self.lambd(x)
+	
+
+class PositionalEncoding(nn.Module):
+
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(max_len, 1, d_model)
+        pe[:, 0, 0::2] = torch.sin(position * div_term)
+        pe[:, 0, 1::2] = torch.cos(position * div_term)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Arguments:
+            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+        """
+        x = x + self.pe[:x.size(0)]
+        return self.dropout(x)
+	
 
 #1) Nastavit Arguenty
 parser = argparse.ArgumentParser()
@@ -44,10 +75,21 @@ print(f"xdim: {xdim}") # 5, 160
 
 #4) model
 x_1 = nn.Linear(5,128)
+pe=PositionalEncoding(128, 0.0, 160)
 y_1 = nn.TransformerEncoderLayer(128, 4, 256, activation=get_activation(options.activation), batch_first=True)
+y_2 = nn.TransformerEncoderLayer(128, 4, 256, activation=get_activation(options.activation), batch_first=True)
+y_3 = nn.TransformerEncoderLayer(128, 4, 256, activation=get_activation(options.activation), batch_first=True)
 x_2 = nn.Linear(128, 4)
-
-f = x_2((y_1(x_1(x.permute(0,2,1)))[:,0,:]))
+f = nn.Sequential(
+	LambdaLayer(lambda x: x.permute((0,2,1))),
+	x_1,
+	pe,
+	y_1,
+	y_2,
+	y_3,
+	LambdaLayer(lambda x: x[:,0,:]),
+	x_2
+)
 
 #5) Optimizer
 optimizer= torch.optim.Adam(f.parameters(), lr=options.lr)
@@ -62,7 +104,7 @@ else:
 	scheduler = None
 
 #7) model name
-model_name = f"Transformer_lr={options.lr}_bs={options.batch_size}_scheduler={options.scheduler}_ui={options.ui}"
+model_name = f"Transformer_deeper_lr={options.lr}_bs={options.batch_size}_scheduler={options.scheduler}_ui={options.ui}"
 #dt = datetime.datetime.now().strftime("%d-%m-%Y--%H-%M-%S--")
 
 run = wandb.init(
@@ -71,7 +113,7 @@ run = wandb.init(
     #name = f"{dt}{model_name}"
     # Track hyperparameters and run metadata
     config={
-	"model": "Transformer",
+	"model": "Transformer_deeper",
 	"model_name": model_name,
         "learning_rate": options.lr,
         "epochs": options.epochs,
